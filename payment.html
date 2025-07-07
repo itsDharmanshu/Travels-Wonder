@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Payment</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://smtpjs.com/v3/smtp.js"></script>
+    <style>
+        /* Custom styles */
+        .card-logos {
+            filter: grayscale(100%);
+            opacity: 0.5;
+        }
+        .card-logos.active {
+            filter: grayscale(0);
+            opacity: 1;
+        }
+        #card-number {
+            letter-spacing: 1px;
+        }
+        .input-field:focus-within {
+            border-color: #4f46e5;
+        }
+        .error-message {
+            opacity: 0;
+            height: 0;
+            transition: all 0.3s ease;
+        }
+        .error-message.show {
+            opacity: 1;
+            height: auto;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center p-4">
+    <div class="max-w-md w-full bg-white rounded-xl shadow-lg overflow-hidden">
+        <!-- Payment Header -->
+        <div class="bg-indigo-600 px-6 py-4">
+            <div class="flex justify-between items-center">
+                <h1 class="text-2xl font-bold text-white">Secure Payment</h1>
+                <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/2b013a61-b9a9-481f-b651-a1c5e72112af.png" alt="Company logo in white text on indigo background" class="h-8" />
+            </div>
+            <p class="text-indigo-100 mt-2">Complete your purchase</p>
+        </div>
+
+        <!-- Payment Form -->
+        <div class="p-6">
+            <div class="mb-6">
+                <h2 class="text-lg font-semibold text-gray-800 mb-2">Order Summary</h2>
+                <div class="flex justify-between py-2 border-b border-gray-100">
+                    <span class="text-gray-600">Premium Subscription</span>
+                    <span class="font-medium">$499.99</span>
+                </div>
+                <div class="flex justify-between py-2 border-b border-gray-100">
+                    <span class="text-gray-600">Tax (8%)</span>
+                    <span class="text-gray-600">$4.00</span>
+                </div>
+                <div class="flex justify-between py-2 font-bold text-lg">
+                    <span>Total</span>
+                    <span>$503.99</span>
+                </div>
+            </div>
+
+            <form id="payment-form" onsubmit="sendEmail(event)">
+                <!-- Card Number -->
+                <div class="mb-4">
+                    <label for="card-number" class="block text-sm font-medium text-gray-700 mb-1">Card Number</label>
+                    <div class="input-field relative rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus-within:ring-1 focus-within:ring-indigo-600">
+                        <input type="text" id="card-number" name="card-number" placeholder="1234 5678 9012 3456" maxlength="19"
+                            class="block w-full border-0 p-0 text-gray-900 placeholder-gray-400 focus:ring-0 sm:text-sm"
+                            oninput="formatCardNumber(this)" />
+                        <div class="absolute right-3 top-2 flex space-x-1">
+                            <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/24a7bd92-06f2-4a71-a981-3ee4d19f10fd.png" alt="Visa card logo" class="card-logos h-5" id="visa-logo" />
+                            <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/aa29523e-7abd-41c2-872f-ef39ff53fc0f.png" alt="Mastercard logo" class="card-logos h-5" id="mc-logo" />
+                            <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/cadd4ed8-2317-488e-9db8-fd81974829c6.png" alt="American Express logo" class="card-logos h-5" id="amex-logo" />
+                        </div>
+                    </div>
+                    <p class="error-message mt-1 text-sm text-red-600" id="card-number-error">Please enter a valid card number</p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <!-- Expiration Date -->
+                    <div>
+                        <label for="expiry-date" class="block text-sm font-medium text-gray-700 mb-1">Expiry Date</label>
+                        <div class="input-field rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus-within:ring-1 focus-within:ring-indigo-600">
+                            <input type="text" id="expiry-date" name="expiry-date" placeholder="MM/YY" maxlength="5"
+                                class="block w-full border-0 p-0 text-gray-900 placeholder-gray-400 focus:ring-0 sm:text-sm"
+                                oninput="formatExpiryDate(this)" />
+                        </div>
+                        <p class="error-message mt-1 text-sm text-red-600" id="expiry-error">Please enter a valid expiry date</p>
+                    </div>
+
+                    <!-- CVV -->
+                    <div>
+                        <label for="cvv" class="block text-sm font-medium text-gray-700 mb-1">CVV</label>
+                        <div class="input-field rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus-within:ring-1 focus-within:ring-indigo-600 relative">
+                            <input type="password" id="cvv" name="cvv" placeholder="•••" maxlength="4"
+                                class="block w-full border-0 p-0 text-gray-900 placeholder-gray-400 focus:ring-0 sm:text-sm" />
+                            <div onclick="toggleCVVVisibility()" class="absolute right-3 top-2 cursor-pointer">
+                                <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/953f2111-e06a-466e-bbe5-1c25319ee53b.png" alt="Toggle CVV visibility" class="h-5 w-5" id="cvv-toggle" />
+                            </div>
+                        </div>
+                        <p class="error-message mt-1 text-sm text-red-600" id="cvv-error">Please enter a valid CVV</p>
+                    </div>
+                </div>
+
+                <!-- Name -->
+                <div class="mb-4">
+                    <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Name on Card</label>
+                    <div class="input-field rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus-within:ring-1 focus-within:ring-indigo-600">
+                        <input type="text" id="name" name="name" placeholder="John Doe"
+                            class="block w-full border-0 p-0 text-gray-900 placeholder-gray-400 focus:ring-0 sm:text-sm" />
+                    </div>
+                    <p class="error-message mt-1 text-sm text-red-600" id="name-error">Please enter your name</p>
+                </div>
+
+                <!-- Email (optional) -->
+                <div class="mb-6">
+                    <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email Receipt To (optional)</label>
+                    <div class="input-field rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus-within:ring-1 focus-within:ring-indigo-600">
+                        <input type="email" id="email" name="email" placeholder="your@email.com"
+                            class="block w-full border-0 p-0 text-gray-900 placeholder-gray-400 focus:ring-0 sm:text-sm" />
+                    </div>
+                    <p class="error-message mt-1 text-sm text-red-600" id="email-error">Please enter a valid email</p>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+                    Pay $53.99
+                </button>
+
+                <p class="text-xs text-gray-500 mt-3">
+                    Your payment information is processed securely. We do not store any card details.
+                </p>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Card number formatting
+        function formatCardNumber(input) {
+            let value = input.value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+            let matches = value.match(/\d{4,16}/g);
+            let match = matches && matches[0] || '';
+            let parts = [];
+            
+            for (let i = 0, len = match.length; i < len; i += 4) {
+                parts.push(match.substring(i, i + 4));
+            }
+            
+            if (parts.length) {
+                input.value = parts.join(' ');
+            } else {
+                input.value = value;
+            }
+
+            // Detect card type and highlight logo
+            const cardNumber = input.value.replace(/\s/g, '');
+            const visaLogo = document.getElementById('visa-logo');
+            const mcLogo = document.getElementById('mc-logo');
+            const amexLogo = document.getElementById('amex-logo');
+            
+            // Reset all logos
+            visaLogo.classList.remove('active');
+            mcLogo.classList.remove('active');
+            amexLogo.classList.remove('active');
+            
+            // Visa cards start with 4
+            if (/^4/.test(cardNumber)) {
+                visaLogo.classList.add('active');
+            } 
+            // MasterCard numbers start with 5 and are 16 digits
+            else if (/^5[1-5]/.test(cardNumber) && cardNumber.length === 16) {
+                mcLogo.classList.add('active');
+            } 
+            // Amex numbers start with 34 or 37 and are 15 digits
+            else if (/^3[47]/.test(cardNumber) && cardNumber.length === 15) {
+                amexLogo.classList.add('active');
+            }
+        }
+
+        // Expiry date formatting
+        function formatExpiryDate(input) {
+            let value = input.value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+            
+            if (value.length > 2) {
+                input.value = value.substring(0, 2) + '/' + value.substring(2, 4);
+            } else {
+                input.value = value;
+            }
+        }
+
+        // Toggle CVV visibility
+        function toggleCVVVisibility() {
+            const cvvInput = document.getElementById('cvv');
+            const toggleIcon = document.getElementById('cvv-toggle');
+            
+            if (cvvInput.type === 'password') {
+                cvvInput.type = 'text';
+                toggleIcon.textContent = "🙈";
+                toggleIcon.alt = "Hide CVV number";
+            } else {
+                cvvInput.type = 'password';
+                toggleIcon.textContent = "👁";
+                toggleIcon.alt = "Show CVV number";
+            }
+        }
+
+        // Form validation
+        document.getElementById('payment-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            let isValid = true;
+            
+            // Validate card number (basic validation)
+            const cardNumber = document.getElementById('card-number').value.replace(/\s/g, '');
+            if (cardNumber.length < 15 || cardNumber.length > 16 || !/^\d+$/.test(cardNumber)) {
+                document.getElementById('card-number-error').classList.add('show');
+                isValid = false;
+            } else {
+                document.getElementById('card-number-error').classList.remove('show');
+            }
+            
+            // Validate expiry date
+            const expiryDate = document.getElementById('expiry-date').value;
+            if (!/^(0[1-9]|1[0-2])\/?([0-9]{2})$/.test(expiryDate)) {
+                document.getElementById('expiry-error').classList.add('show');
+                isValid = false;
+            } else {
+                document.getElementById('expiry-error').classList.remove('show');
+            }
+            
+            // Validate CVV
+            const cvv = document.getElementById('cvv').value;
+            if (cvv.length < 3 || cvv.length > 4 || !/^\d+$/.test(cvv)) {
+                document.getElementById('cvv-error').classList.add('show');
+                isValid = false;
+            } else {
+                document.getElementById('cvv-error').classList.remove('show');
+            }
+            
+            // Validate name
+            const name = document.getElementById('name').value.trim();
+            if (name.length < 2 || !/^[a-zA-Z ]+$/.test(name)) {
+                document.getElementById('name-error').classList.add('show');
+                isValid = false;
+            } else {
+                document.getElementById('name-error').classList.remove('show');
+            }
+            
+            // Validate email if provided
+            const email = document.getElementById('email').value.trim();
+            if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                document.getElementById('email-error').classList.add('show');
+                isValid = false;
+            } else {
+                document.getElementById('email-error').classList.remove('show');
+            }
+            
+            // If form is valid, proceed with payment
+            if (isValid) {
+                // In a real application, you would send the payment details to your server
+                const email = document.getElementById('email').value.trim();
+                if (email) {
+                    alert('Payment processed successfully! Receipt will be sent to ' + email);
+                } else {
+                    alert('Payment processed successfully!');
+                }
+                // Reset form
+                this.reset();
+                
+                // Reset card logos
+                document.querySelectorAll('.card-logos').forEach(logo => {
+                    logo.classList.remove('active');
+                });
+                
+                // Hide all error messages
+                document.querySelectorAll('.error-message').forEach(msg => {
+                    msg.classList.remove('show');
+                });
+            }
+        });
+
+        function sendEmail(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value.trim();
+            const name = document.getElementById('name').value.trim();
+            
+            // Configure these with your SMTP credentials
+            Email.send({
+                SecureToken: "YOUR_SECURE_TOKEN", // Get from SMTPJS.com
+                To: email,
+                From: "receipts@yourdomain.com",
+                Subject: "Payment Receipt",
+                Body: `Hi ${name},<br><br>Thank you for your payment of $53.99.<br><br>Your receipt is attached.`
+            }).then(
+                message => {
+                    if (email) {
+                        alert(`Payment processed successfully! Receipt sent to ${email}`);
+                    } else {
+                        alert('Payment processed successfully!');
+                    }
+                    document.getElementById('payment-form').reset();
+                    document.querySelectorAll('.card-logos').forEach(logo => {
+                        logo.classList.remove('active');
+                    });
+                    document.querySelectorAll('.error-message').forEach(msg => {
+                        msg.classList.remove('show');
+                    });
+                }
+            );
+        }
+    </script>
+</body>
+</html>
